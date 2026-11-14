@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapeo de Procesos y Diagnóstico de Fugas | ESCALAH-EIC</title>
+<style>
+  :root {
+    --primary: #1B4332;
+    --primary-light: #2D6A4F;
+    --accent: #D97706;
+    --ihcafe: #0369A1;
+    --ihcafe-bg: #E0F2FE;
+    --bg: #F4F6F4;
+    --card: #FFFFFF;
+    --text: #1F2937;
+    --muted: #6B7280;
+    --border: #D1D5DB;
+    --ok-bg: #D1FAE5;
+    --ok-text: #065F46;
+    --warn-bg: #FEF3C7;
+    --warn-text: #92400E;
+    --err-bg: #FEE2E2;
+    --err-text: #991B1B;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+  body { background-color: var(--bg); color: var(--text); line-height: 1.5; }
+
+  header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    color: white;
+    padding: 1.5rem 2rem;
+    border-bottom: 4px solid var(--accent);
+  }
+  header h1 { font-size: 1.45rem; font-weight: 700; margin-bottom: 0.25rem; }
+  header p { font-size: 0.9rem; opacity: 0.92; }
+
+  .container {
+    max-width: 1340px;
+    margin: 1.5rem auto;
+    padding: 0 1rem;
+    display: grid;
+    grid-template-columns: 1.08fr 1.12fr;
+    gap: 1.5rem;
+  }
+
+  @media (max-width: 980px) {
+    .container { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--card);
+    border-radius: 10px;
+    padding: 1.4rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    border: 1px solid var(--border);
+    margin-bottom: 1.25rem;
+  }
+
+  .card h2 {
+    font-size: 1.08rem;
+    color: var(--primary);
+    border-bottom: 2px solid #E5E7EB;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; }
+  .grid-4 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.65rem; }
+  @media (max-width: 600px) { .grid-2, .grid-4 { grid-template-columns: 1fr; } }
+
+  .form-group { margin-bottom: 0.85rem; }
+  label { display: block; font-size: 0.83rem; font-weight: 600; margin-bottom: 0.25rem; color: #374151; }
+  input[type="text"], input[type="number"], select {
+    width: 100%;
+    padding: 0.52rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    background: #FAFAFA;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--primary-light); background: #FFF; }
+
+  .input-unit-row {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 0.45rem;
+  }
+
+  .conv-badge {
+    display: inline-block;
+    margin-top: 0.3rem;
+    font-size: 0.76rem;
+    background: #EEF2FF;
+    color: #1E40AF;
+    padding: 0.2rem 0.55rem;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  .ihcafe-badge {
+    display: inline-block;
+    font-size: 0.68rem;
+    background: var(--ihcafe-bg);
+    color: var(--ihcafe);
+    border: 1px solid #BAE6FD;
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    font-weight: 700;
+    vertical-align: middle;
+    margin-left: 0.3rem;
+  }
+
+  .checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin-bottom: 0.5rem;
+  }
+  .check-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #F3F4F6;
+    padding: 0.42rem 0.7rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+  .check-pill input { accent-color: var(--primary); width: 15px; height: 15px; }
+
+  .cost-breakdown-box {
+    background: #F8FAFC;
+    border: 1px solid #CBD5E1;
+    border-radius: 8px;
+    padding: 0.85rem;
+    margin-top: 0.5rem;
+  }
+  .cost-note {
+    font-size: 0.75rem;
+    color: #0369A1;
+    background: #E0F2FE;
+    padding: 0.35rem 0.6rem;
+    border-radius: 4px;
+    margin-bottom: 0.65rem;
+    font-weight: 600;
+  }
+
+  .btn-group { display: flex; gap: 0.65rem; margin-top: 1rem; flex-wrap: wrap; }
+  button {
+    padding: 0.7rem 1rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  button:hover { opacity: 0.92; }
+  .btn-primary { background: var(--primary); color: white; flex: 1; }
+  .btn-save { background: #0369A1; color: white; flex: 1; }
+  .btn-pdf { background: var(--accent); color: white; flex: 1; }
+  .btn-sm { padding: 0.3rem 0.55rem; font-size: 0.75rem; border-radius: 4px; }
+  .btn-danger { background: #DC2626; color: white; }
+
+  .toast-msg {
+    display: none;
+    background: #065F46;
+    color: white;
+    padding: 0.55rem 0.9rem;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin-top: 0.6rem;
+    text-align: center;
+  }
+
+  /* Diagrama de Flujo Visual */
+  .flow-legend {
+    display: flex;
+    gap: 0.9rem;
+    font-size: 0.77rem;
+    color: var(--muted);
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .flow-container {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.95rem;
+    background: #F9FAFB;
+    border: 1px dashed #9CA3AF;
+    border-radius: 8px;
+    min-height: 135px;
+  }
+  .flow-node {
+    background: white;
+    border: 2px solid var(--primary);
+    border-radius: 8px;
+    padding: 0.55rem 0.75rem;
+    min-width: 130px;
+    max-width: 175px;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .flow-node.status-ok { border-color: #10B981; background: #ECFDF5; }
+  .flow-node.status-warn { border-color: #F59E0B; background: #FFFBEB; }
+  .flow-node.status-err { border-color: #EF4444; background: #FEF2F2; }
+
+  .node-symbol {
+    display: inline-block;
+    font-weight: 800;
+    font-size: 0.72rem;
+    padding: 0.1rem 0.42rem;
+    border-radius: 12px;
+    background: var(--primary);
+    color: white;
+    margin-bottom: 0.22rem;
+  }
+  .flow-node.status-err .node-symbol { background: #DC2626; }
+  .flow-node.status-warn .node-symbol { background: #D97706; }
+  .flow-node.status-ok .node-symbol { background: #059669; }
+
+  .node-title { font-size: 0.84rem; font-weight: 700; color: #111827; }
+  .node-metric { font-size: 0.73rem; color: #4B5563; margin-top: 0.2rem; }
+  .flow-arrow { font-size: 1.15rem; font-weight: 900; color: var(--muted); }
+
+  /* Resultados y KPIs */
+  .kpi-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  @media (max-width: 600px) { .kpi-summary { grid-template-columns: 1fr; } }
+
+  .kpi-box {
+    padding: 0.85rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #F9FAFB;
+  }
+  .kpi-box .label { font-size: 0.73rem; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  .kpi-box .val { font-size: 1.12rem; font-weight: 800; color: var(--primary); margin: 0.2rem 0; }
+  .kpi-box .sub { font-size: 0.77rem; color: #4B5563; }
+
+  .alert-item {
+    padding: 0.72rem 0.95rem;
+    border-radius: 6px;
+    margin-bottom: 0.6rem;
+    border-left: 4px solid;
+    font-size: 0.86rem;
+  }
+  .alert-err { background: var(--err-bg); color: var(--err-text); border-color: #DC2626; }
+  .alert-warn { background: var(--warn-bg); color: var(--warn-text); border-color: #D97706; }
+  .alert-ok { background: var(--ok-bg); color: var(--ok-text); border-color: #059669; }
+
+  .disclaimer-box {
+    background: #FFFBEB;
+    border: 1px solid #FCD34D;
+    border-left: 4px solid #D97706;
+    color: #78350F;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    margin-top: 0.75rem;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-top: 0.5rem; }
+  th, td { border: 1px solid var(--border); padding: 0.48rem; text-align: left; }
+  th { background: #F3F4F6; color: var(--primary); font-weight: 700; }
+
+  footer {
+    text-align: center;
+    padding: 1.25rem;
+    font-size: 0.86rem;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    margin-top: 1.5rem;
+    font-weight: 600;
+  }
+
+  @media print {
+    body { background: white; }
+    .no-print { display: none !important; }
+    .container { display: block; max-width: 100%; margin: 0; padding: 0; }
+    .card { box-shadow: none; border: 1px solid #CCC; page-break-inside: avoid; }
+    header, .flow-node, .alert-item, .kpi-box, .conv-badge, .ihcafe-badge, .disclaimer-box {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Mapeo de Procesos Productivos: De la Improvisación a un Negocio Eficiente</h1>
+  <p>Herramientas de Ingeniería Industrial • Diagnóstico de Mermas, Costos y Estándares IHCAFE / EUDR (ESCALAH-EIC)</p>
+</header>
+
+<div class="container">
+  <!-- COLUMNA IZQUIERDA: ENTRADA DE DATOS -->
+  <div class="no-print">
+    <div class="card">
+      <h2>1. Selección de Empresa y Tipo de Proceso</h2>
+      <div class="form-group">
+        <label>Seleccione su empresa del catálogo (o ingrese una personalizada):</label>
+        <select id="selectEmpresa" onchange="cargarDatosEmpresa()">
+          <option value="custom">-- Personalizada / Nueva Empresa --</option>
+        </select>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Nombre de la Finca / Empresa / Lote</label>
+          <input type="text" id="empNombre" value="Finca Las Tapias (Café Brix)" oninput="actualizarTodo()">
+        </div>
+        <div class="form-group">
+          <label>Tasa de Cambio (Lps por 1 USD)</label>
+          <input type="number" id="tasaCambio" value="25.00" step="0.05" oninput="actualizarTodo()">
+        </div>
+      </div>
+
+      <!-- MEJORA 1: Selector de Tipo de Proceso con Factor Editable -->
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Tipo de Beneficiado / Proceso <span class="ihcafe-badge">Nuevo</span></label>
+          <select id="tipoProceso" onchange="alCambiarTipoProceso()">
+            <option value="lavado" selected>Lavado (Relación estándar 5.0 : 1)</option>
+            <option value="honey">Honey / Melado (Relación estándar 4.3 : 1)</option>
+            <option value="natural">Natural / Secado en Uva (Relación 3.8 : 1)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Factor Cereza → Pergamino/Bola (Editable)</label>
+          <input type="number" id="factorCerezaPerg" value="5.0" step="0.1" min="2.0" max="8.0" oninput="actualizarTodo()">
+          <span class="conv-badge" id="infoFactorCereza">5.0 lb cereza (20 latas) = 1 qq pergamino</span>
+        </div>
+      </div>
+
+      <label>Etapas que ejecuta actualmente en su operación:</label>
+      <div class="checkbox-group">
+        <label class="check-pill"><input type="checkbox" id="etCosecha" checked onchange="actualizarTodo()"> Cosecha y Beneficio Húmedo</label>
+        <label class="check-pill"><input type="checkbox" id="etSecado" checked onchange="actualizarTodo()"> Secado (Solar / Mecánico)</label>
+        <label class="check-pill"><input type="checkbox" id="etTrilla" checked onchange="actualizarTodo()"> Beneficio Seco (Trilla)</label>
+        <label class="check-pill"><input type="checkbox" id="etTueste" onchange="actualizarTodo()"> Tueste y Empaque Final</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2. Volúmenes, Rendimiento y Desglose de Costos <span class="ihcafe-badge">Estándar IHCAFE</span></h2>
+      
+      <div class="form-group">
+        <label>Producción del Lote o Anual (Ingrese número y elija su unidad)</label>
+        <div class="input-unit-row">
+          <input type="number" id="volInput" value="500" min="0.1" step="any" oninput="actualizarTodo()">
+          <select id="volUnit" onchange="actualizarTodo()">
+            <option value="qq_oro" selected>Quintales Oro (100 lb / 45.36 kg)</option>
+            <option value="qq_perg">Quintales Pergamino Seco (100 lb)</option>
+            <option value="libras">Libras (lb)</option>
+            <option value="kg">Kilogramos (kg)</option>
+            <option value="sacos_69">Sacos Exportación (69 kg / 152.12 lb)</option>
+            <option value="latas_cereza">Latas de Café Cereza (~25 lb)</option>
+          </select>
+        </div>
+        <span class="conv-badge" id="convVolResumen">Estándar IHCAFE: 500.00 qq Oro | 22,680 kg | 328.7 sacos (69 kg)</span>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Precio de Venta Referencia</label>
+          <div class="input-unit-row">
+            <input type="number" id="precioInput" value="5800" min="1" step="any" oninput="actualizarTodo()">
+            <select id="precioUnit" onchange="actualizarTodo()">
+              <option value="lps_qq_oro" selected>Lps / qq Oro</option>
+              <option value="usd_qq_oro">USD ($) / qq Oro</option>
+              <option value="lps_qq_perg">Lps / qq Pergamino</option>
+              <option value="lps_lb">Lps / Libra</option>
+              <option value="usd_kg">USD ($) / kg</option>
+            </select>
+          </div>
+          <span class="conv-badge" id="convPrecioResumen">Equivale a: 5,800 Lps/qq Oro ($232.00 USD/qq)</span>
+        </div>
+
+        <div class="form-group">
+          <label>Unidad de Medida para Costos <span class="ihcafe-badge">★ KPI IHCAFE</span></label>
+          <select id="costoUnit" onchange="actualizarTodo()">
+            <option value="lps_qq_oro" selected>Lps / qq Oro</option>
+            <option value="usd_qq_oro">USD ($) / qq Oro</option>
+            <option value="lps_qq_perg">Lps / qq Pergamino</option>
+            <option value="lps_lata">Lps / Lata Cereza</option>
+            <option value="lps_lb">Lps / Libra</option>
+          </select>
+          <span class="conv-badge" id="convCostoResumen">Total: L. 4,100 / qq Oro ($164.00 USD/qq)</span>
+        </div>
+      </div>
+
+      <!-- MEJORA 2: Desglose Rápido de Costos en la misma unidad -->
+      <div class="cost-breakdown-box">
+        <div class="cost-note" id="notaUnidadCosto">
+          💡 Nota: Ingrese cada rubro de costo expresado en la misma unidad elegida arriba (Lps / qq Oro). El sistema los sumará automáticamente.
+        </div>
+        <div class="grid-4">
+          <div class="form-group" style="margin-bottom:0.3rem;">
+            <label>1. Corte / Cosecha</label>
+            <input type="number" id="costoCorte" value="2100" min="0" step="any" oninput="actualizarTodo()">
+          </div>
+          <div class="form-group" style="margin-bottom:0.3rem;">
+            <label>2. Beneficio Húmedo</label>
+            <input type="number" id="costoHumedo" value="650" min="0" step="any" oninput="actualizarTodo()">
+          </div>
+          <div class="form-group" style="margin-bottom:0.3rem;">
+            <label>3. Secado</label>
+            <input type="number" id="costoSecado" value="750" min="0" step="any" oninput="actualizarTodo()">
+          </div>
+          <div class="form-group" style="margin-bottom:0.3rem;">
+            <label>4. Trilla / Empaque</label>
+            <input type="number" id="costoTrilla" value="600" min="0" step="any" oninput="actualizarTodo()">
+          </div>
+        </div>
+        <div style="margin-top:0.5rem; font-size:0.78rem; color:#1E293B; font-weight:700;" id="resumenEstructuraCostos">
+          Suma Directa: 4,100.00 | Estructura: Corte 51% • Húmedo 16% • Secado 18% • Trilla 15%
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:0.85rem;">
+        <label>Factor de Rendimiento en Trilla (Pergamino necesario para 1 qq Oro) <span class="ihcafe-badge">★ KPI IHCAFE</span></label>
+        <div class="input-unit-row">
+          <input type="number" id="trillaInput" value="122" min="1" step="any" oninput="actualizarTodo()">
+          <select id="trillaUnit" onchange="actualizarTodo()">
+            <option value="lb_perg_qq_oro" selected>Libras Pergamino / 1 qq Oro (Meta: 118-122 lb)</option>
+            <option value="qq_perg_qq_oro">Quintales Pergamino / 1 qq Oro (Meta: 1.18-1.22 qq)</option>
+            <option value="kg_perg_saco69">kg Pergamino / Saco 69 kg Oro (Meta: 82-85 kg)</option>
+            <option value="pct_merma_trilla">% Merma de Cascarilla/Pasilla (Meta: 16-18%)</option>
+          </select>
+        </div>
+        <span class="conv-badge" id="convTrillaResumen">Equivale a: 1.22 qq Pergamino por 1 qq Oro (55.34 kg perg / 45.36 kg oro)</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3. Indicadores de Calidad, Velocidad y Sostenibilidad</h2>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>% Cereza Madura en Corte (Meta: >95%) <span class="ihcafe-badge">★ KPI IHCAFE</span></label>
+          <input type="number" id="pctMaduro" value="94" min="0" max="100" oninput="actualizarTodo()">
+        </div>
+        <div class="form-group">
+          <label>Humedad Final Pergamino % (Meta: 10.5 - 11.5%) <span class="ihcafe-badge">★ KPI IHCAFE</span></label>
+          <input type="number" id="humedadFinal" value="11.0" step="0.1" min="5" max="25" oninput="actualizarTodo()">
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Días de Secado por Lote (Meta: 7-12 solar / 1-2 mec.) <span class="ihcafe-badge">★ KPI IHCAFE</span></label>
+          <input type="number" id="diasSecado" value="10" min="1" max="45" oninput="actualizarTodo()">
+        </div>
+        <div class="form-group">
+          <label>Defectos Físicos / Calidad en Taza (SCA) <span class="ihcafe-badge">★ KPI IHCAFE</span></label>
+          <select id="tieneSca" onchange="actualizarTodo()">
+            <option value="si" selected>Verificado en Laboratorio (≥84 pts / 0 def. primarios)</option>
+            <option value="no">Autorreportado / Sin análisis físico oficial</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid-2" id="bloqueTuesteInputs" style="display:none;">
+        <div class="form-group">
+          <label>Merma de Peso en Tueste % (Meta: 14 - 18%)</label>
+          <input type="number" id="mermaTueste" value="17" step="0.5" min="5" max="35" oninput="actualizarTodo()">
+        </div>
+        <div class="form-group">
+          <label>Presentación Bolsa Empaque (Libras)</label>
+          <input type="number" id="pesoBolsaLb" value="1" step="0.1" min="0.1" oninput="actualizarTodo()">
+          <span class="conv-badge" id="convBolsa">Equivale a: 453.6 gramos (0.45 kg)</span>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Trazabilidad y Polígonos GPS (EUDR) <span class="ihcafe-badge">★ KPI IHCAFE</span></label>
+          <select id="tieneEudr" onchange="actualizarTodo()">
+            <option value="no">No / Solo registro en papel</option>
+            <option value="parcial" selected>Parcial (en proceso)</option>
+            <option value="si">Sí, 100% georreferenciado por lote</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Uso de Agua y Manejo de Aguas Mieles <span class="ihcafe-badge">★ KPI IHCAFE</span></label>
+          <select id="tieneAgua" onchange="actualizarTodo()">
+            <option value="no" selected>No mide litros ni trata aguas mieles</option>
+            <option value="si">Sí, recircula agua y composta pulpa</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn-primary" onclick="actualizarTodo()">🔄 Actualizar</button>
+        <button class="btn-save" onclick="guardarEnBitacora()">💾 Guardar Lote en Bitácora</button>
+        <button class="btn-pdf" onclick="window.print()">📄 Imprimir / PDF</button>
+      </div>
+      <div id="toastMsg" class="toast-msg"></div>
+    </div>
+  </div>
+
+  <!-- COLUMNA DERECHA: DIAGRAMA Y DIAGNÓSTICO -->
+  <div>
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:0.75rem;">
+        <h2 style="margin:0; border:none;" id="tituloReporte">Diagnóstico Operativo: Finca Las Tapias (Café Brix)</h2>
+        <span style="font-size:0.8rem; color:var(--muted);" id="fechaReporte"></span>
+      </div>
+
+      <div class="kpi-summary">
+        <div class="kpi-box">
+          <div class="label">Volumen Estandarizado (IHCAFE)</div>
+          <div class="val" id="resVolLocal">500.0 qq Oro</div>
+          <div class="sub" id="resVolInt">610.0 qq Perg. | 22,680 kg | 328.7 sacos</div>
+        </div>
+        <div class="kpi-box">
+          <div class="label">Margen Bruto por Quintal Oro</div>
+          <div class="val" id="resMargen">29.3%</div>
+          <div class="sub" id="resUtilidad">L. 1,700/qq Oro ($68.00 USD/qq)</div>
+        </div>
+        <div class="kpi-box">
+          <div class="label">Fuga Económica Estimada</div>
+          <div class="val" style="color:#DC2626;" id="resFugaAnual">L. 0</div>
+          <div class="sub" id="resFugaUsd">$0.00 USD / año recuperables</div>
+        </div>
+      </div>
+
+      <h2>Diagrama de Flujo del Proceso (Simbología Estándar)</h2>
+      <div class="flow-legend">
+        <span><strong>[○] Operación</strong></span>
+        <span><strong>[□] Inspección</strong></span>
+        <span><strong>[▽] Almacén</strong></span>
+        <span>🟢 Óptimo | 🟡 Alerta | 🔴 Fuga Crítica | <span class="ihcafe-badge">★ KPI IHCAFE</span></span>
+      </div>
+      <div class="flow-container" id="diagramaFlujo"></div>
+
+      <div class="disclaimer-box">
+        <strong>Nota Metodológica y Margen de Error:</strong> Los cálculos presentados son estimaciones referenciales diseñadas para diagnóstico rápido en taller. Puede personalizar el factor de conversión cereza-pergamino según su tipo de proceso (Lavado ~5.0:1, Honey ~4.3:1, Natural ~3.8:1) y variedad/altitud. Valide sus métricas finales con su contabilidad y registros de laboratorio IHCAFE.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Diagnóstico de Fugas de Dinero y Certificación</h2>
+      <div id="listaAlertas"></div>
+    </div>
+
+    <div class="card">
+      <h2>Plan de Acción Rápida (Corrección en &lt; 30 Días)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Prioridad</th>
+            <th>Hallazgo / Fuga Detectada</th>
+            <th>Acción Inmediata de Bajo Costo</th>
+            <th>KPI Asociado</th>
+          </tr>
+        </thead>
+        <tbody id="tablaPlan"></tbody>
+      </table>
+    </div>
+
+    <!-- MEJORA 3: Bitácora Local de Lotes Guardados (localStorage) -->
+    <div class="card no-print">
+      <h2>
+        <span>📚 Bitácora de Lotes Guardados (Memoria Local Sin Internet)</span>
+        <button class="btn-sm btn-danger" onclick="limpiarBitacora()">Limpiar Todo</button>
+      </h2>
+      <p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.5rem;">
+        Sus diagnósticos se guardan en la memoria de este navegador para consultarlos durante toda la cosecha sin conexión.
+      </p>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Empresa / Lote</th>
+              <th>Proceso</th>
+              <th>Volumen Oro</th>
+              <th>Fuga Anual</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tablaBitacora"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Herramientas de Ingeniería Industrial • Programa ESCALAH-EIC • Ing. Massiel Erazo • Año 2026
+</footer>
+
+<script>
+  const empresasCatalogo = [
+    { id: 1, nombre: "Finca Las Tapias (Café Brix)", vol: 500, unit: "qq_oro", cosecha: true, secado: true, trilla: true, tueste: true, eudr: "parcial", sca: "si", agua: "no" },
+    { id: 2, nombre: "Finca y Café Siete de Julio", vol: 250, unit: "qq_oro", cosecha: true, secado: true, trilla: true, tueste: true, eudr: "parcial", sca: "si", agua: "no" },
+    { id: 3, nombre: "Café FLORCAL (Distribuidora FLORCAL)", vol: 200, unit: "qq_oro", cosecha: true, secado: true, trilla: true, tueste: true, eudr: "parcial", sca: "si", agua: "no" },
+    { id: 4, nombre: "Café ITZAE (Empresa de Servicios Múltiples)", vol: 4000, unit: "libras", cosecha: false, secado: false, trilla: true, tueste: true, eudr: "parcial", sca: "no", agua: "no" },
+    { id: 5, nombre: "Cultiva JM (Servicios Agropecuarios Cultiva)", vol: 300, unit: "qq_oro", cosecha: true, secado: true, trilla: true, tueste: true, eudr: "parcial", sca: "si", agua: "no" },
+    { id: 6, nombre: "Oddity Coffee Roasters", vol: 71, unit: "qq_oro", cosecha: false, secado: true, trilla: true, tueste: true, eudr: "si", sca: "no", agua: "no" },
+    { id: 7, nombre: "Gema Café (INDESA)", vol: 4200, unit: "libras", cosecha: true, secado: true, trilla: true, tueste: true, eudr: "no", sca: "no", agua: "no" },
+    { id: 8, nombre: "Villa Estela (Finca Agroturística / Café Navarro)", vol: 28, unit: "qq_oro", cosecha: true, secado: true, trilla: false, tueste: true, eudr: "no", sca: "no", agua: "si" },
+    { id: 9, nombre: "Carpintero Café y Arte (MVP Soluciones)", vol: 40, unit: "qq_oro", cosecha: true, secado: true, trilla: true, tueste: true, eudr: "parcial", sca: "no", agua: "no" },
+    { id: 10, nombre: "Grupo Teknes (Secadora Vertical APEX6 - Equipo)", vol: 100, unit: "qq_perg", cosecha: false, secado: true, trilla: false, tueste: false, eudr: "si", sca: "no", agua: "no" },
+    { id: 11, nombre: "Golden Café S. de R.L.", vol: 18000, unit: "libras", cosecha: true, secado: true, trilla: true, tueste: true, eudr: "no", sca: "no", agua: "no" },
+    { id: 12, nombre: "Finca Santa Emilia (Comercial Santa Emilia)", vol: 2000, unit: "qq_oro", cosecha: true, secado: true, trilla: true, tueste: false, eudr: "si", sca: "si", agua: "no" },
+    { id: 13, nombre: "Brothers Coffee S. de R.L.", vol: 500, unit: "qq_oro", cosecha: false, secado: true, trilla: true, tueste: true, eudr: "parcial", sca: "no", agua: "no" },
+    { id: 14, nombre: "RYXCORA (Grupo Marcin - Café B'San Juan)", vol: 180, unit: "qq_oro", cosecha: true, secado: true, trilla: true, tueste: true, eudr: "si", sca: "si", agua: "no" },
+    { id: 15, nombre: "Tierra India (Tostaduría Tierra India S.A.)", vol: 3000, unit: "qq_oro", cosecha: false, secado: false, trilla: true, tueste: true, eudr: "parcial", sca: "no", agua: "no" },
+    { id: 16, nombre: "Finca Entre Caminos", vol: 100, unit: "qq_oro", cosecha: true, secado: true, trilla: true, tueste: true, eudr: "si", sca: "no", agua: "si" },
+    { id: 17, nombre: "Café Monteverde (Inversiones Monteverde)", vol: 20000, unit: "libras", cosecha: true, secado: true, trilla: true, tueste: true, eudr: "si", sca: "no", agua: "si" },
+    { id: 18, nombre: "Café Liquidambar (Del Lago Orgánico)", vol: 35, unit: "qq_oro", cosecha: true, secado: true, trilla: true, tueste: false, eudr: "no", sca: "no", agua: "no" },
+    { id: 19, nombre: "APROLMA (Asociación de Productoras de Café)", vol: 3000, unit: "qq_oro", cosecha: true, secado: true, trilla: true, tueste: false, eudr: "parcial", sca: "no", agua: "si" },
+    { id: 20, nombre: "Flores del Café (Asociación de Productoras)", vol: 300, unit: "qq_oro", cosecha: true, secado: true, trilla: true, tueste: false, eudr: "parcial", sca: "no", agua: "no" },
+    { id: 21, nombre: "ROMAR COFFEE", vol: 200, unit: "qq_oro", cosecha: true, secado: true, trilla: true, tueste: false, eudr: "si", sca: "no", agua: "no" },
+    { id: 22, nombre: "Beneficio San Miguel (Agroindustrias San Miguel)", vol: 50, unit: "qq_oro", cosecha: false, secado: true, trilla: true, tueste: false, eudr: "parcial", sca: "no", agua: "no" },
+    { id: 23, nombre: "Finca La Joya (Joya Coffee)", vol: 150, unit: "qq_oro", cosecha: true, secado: true, trilla: true, tueste: true, eudr: "parcial", sca: "no", agua: "si" },
+    { id: 24, nombre: "Café El Porrazo (INSAVA)", vol: 6000, unit: "libras", cosecha: true, secado: true, trilla: true, tueste: true, eudr: "no", sca: "no", agua: "si" },
+    { id: 25, nombre: "Caja Rural Carlo Acutis", vol: 25, unit: "qq_perg", cosecha: true, secado: true, trilla: false, tueste: true, eudr: "parcial", sca: "no", agua: "no" },
+    { id: 26, nombre: "Café María José (Inversiones María José)", vol: 40, unit: "qq_oro", cosecha: true, secado: true, trilla: true, tueste: true, eudr: "no", sca: "no", agua: "no" },
+    { id: 27, nombre: "Colonial Coffee (Transportes Orfi / Finca Los Hermanos)", vol: 520, unit: "qq_oro", cosecha: true, secado: true, trilla: false, tueste: false, eudr: "parcial", sca: "no", agua: "no" },
+    { id: 28, nombre: "Café Don Kike", vol: 2000, unit: "kg", cosecha: true, secado: true, trilla: true, tueste: true, eudr: "no", sca: "no", agua: "no" },
+    { id: 29, nombre: "SODISA (AgroBIT ERP - Software Trazabilidad)", vol: 500, unit: "qq_oro", cosecha: true, secado: true, trilla: true, tueste: false, eudr: "si", sca: "si", agua: "si" }
+  ];
+
+  const STORAGE_KEY = 'escalah_bitacora_lotes_2026';
+  let ultimoCalculoGlobal = { volQqOro: 0, fugaLps: 0 };
+
+  const sel = document.getElementById('selectEmpresa');
+  empresasCatalogo.forEach(emp => {
+    const opt = document.createElement('option');
+    opt.value = emp.id;
+    opt.text = `${emp.id}. ${emp.nombre}`;
+    sel.appendChild(opt);
+  });
+  sel.value = "1";
+
+  function alCambiarTipoProceso() {
+    const proc = document.getElementById('tipoProceso').value;
+    const factorInput = document.getElementById('factorCerezaPerg');
+    if (proc === 'lavado') factorInput.value = 5.0;
+    else if (proc === 'honey') factorInput.value = 4.3;
+    else if (proc === 'natural') factorInput.value = 3.8;
+    actualizarTodo();
+  }
+
+  function cargarDatosEmpresa() {
+    const val = document.getElementById('selectEmpresa').value;
+    if (val === 'custom') return;
+    const emp = empresasCatalogo.find(e => e.id == val);
+    if (!emp) return;
+
+    document.getElementById('empNombre').value = emp.nombre;
+    document.getElementById('volInput').value = emp.vol;
+    document.getElementById('volUnit').value = emp.unit;
+    document.getElementById('etCosecha').checked = emp.cosecha;
+    document.getElementById('etSecado').checked = emp.secado;
+    document.getElementById('etTrilla').checked = emp.trilla;
+    document.getElementById('etTueste').checked = emp.tueste;
+    document.getElementById('tieneEudr').value = emp.eudr;
+    document.getElementById('tieneSca').value = emp.sca;
+    document.getElementById('tieneAgua').value = emp.agua;
+
+    actualizarTodo();
+  }
+
+  function fmt(num, dec = 2) {
+    return Number(num).toLocaleString('es-HN', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  }
+
+  function actualizarTodo() {
+    const nombre = document.getElementById('empNombre').value || 'Empresa Cafetalera';
+    const tc = parseFloat(document.getElementById('tasaCambio').value) || 25.00;
+    const tipoProceso = document.getElementById('tipoProceso').value;
+    const factorCerezaPerg = parseFloat(document.getElementById('factorCerezaPerg').value) || 5.0;
+
+    const latasPorQq = (factorCerezaPerg * 100) / 25;
+    document.getElementById('infoFactorCereza').innerText =
+      `${fmt(factorCerezaPerg * 100, 0)} lb cereza (~${fmt(latasPorQq, 1)} latas) = 1 qq pergamino/bola`;
+
+    document.getElementById('tituloReporte').innerText = `Diagnóstico (${tipoProceso.toUpperCase()}): ${nombre}`;
+    document.getElementById('fechaReporte').innerText = new Date().toLocaleDateString('es-HN', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    const etCosecha = document.getElementById('etCosecha').checked;
+    const etSecado = document.getElementById('etSecado').checked;
+    const etTrilla = document.getElementById('etTrilla').checked;
+    const etTueste = document.getElementById('etTueste').checked;
+    document.getElementById('bloqueTuesteInputs').style.display = etTueste ? 'grid' : 'none';
+
+    // 1. Factor de Trilla
+    const trillaVal = parseFloat(document.getElementById('trillaInput').value) || 120;
+    const trillaUnit = document.getElementById('trillaUnit').value;
+    let factorTrillaLb = 120;
+    if (trillaUnit === 'lb_perg_qq_oro') {
+      factorTrillaLb = trillaVal;
+    } else if (trillaUnit === 'qq_perg_qq_oro') {
+      factorTrillaLb = trillaVal * 100;
+    } else if (trillaUnit === 'kg_perg_saco69') {
+      factorTrillaLb = (trillaVal / 69) * 100;
+    } else if (trillaUnit === 'pct_merma_trilla') {
+      const mermaDec = Math.min(Math.max(trillaVal, 1), 60) / 100;
+      factorTrillaLb = 100 / (1 - mermaDec);
+    }
+    const ratioPergAOro = factorTrillaLb / 100;
+    const factorTrillaKg = factorTrillaLb * 0.453592;
+    document.getElementById('convTrillaResumen').innerText =
+      `Estándar IHCAFE: ${fmt(ratioPergAOro, 2)} qq Pergamino (${fmt(factorTrillaLb, 1)} lb) = 1 qq Oro (${fmt(factorTrillaKg, 1)} kg perg / 45.36 kg oro)`;
+
+    // 2. Volumen ajustado por factorCerezaPerg
+    const volVal = parseFloat(document.getElementById('volInput').value) || 0;
+    const volUnit = document.getElementById('volUnit').value;
+    let volQqOro = 0;
+
+    if (volUnit === 'qq_oro') {
+      volQqOro = volVal;
+    } else if (volUnit === 'qq_perg') {
+      volQqOro = volVal / ratioPergAOro;
+    } else if (volUnit === 'libras') {
+      volQqOro = volVal / 100;
+    } else if (volUnit === 'kg') {
+      volQqOro = (volVal / 45.3592);
+    } else if (volUnit === 'sacos_69') {
+      volQqOro = (volVal * 69) / 45.3592;
+    } else if (volUnit === 'latas_cereza') {
+      const lbsCereza = volVal * 25;
+      const qqPergEst = lbsCereza / (factorCerezaPerg * 100);
+      volQqOro = qqPergEst / ratioPergAOro;
+    }
+
+    const volQqPerg = volQqOro * ratioPergAOro;
+    const volKgOro = volQqOro * 45.3592;
+    const sacos69Kg = volKgOro / 69;
+
+    document.getElementById('convVolResumen').innerText =
+      `Estándar IHCAFE: ${fmt(volQqOro, 1)} qq Oro | ${fmt(volQqPerg, 1)} qq Pergamino | ${fmt(volKgOro, 0)} kg Oro (${fmt(sacos69Kg, 1)} sacos 69 kg)`;
+
+    // 3. Precio de Venta
+    const precioVal = parseFloat(document.getElementById('precioInput').value) || 0;
+    const precioUnit = document.getElementById('precioUnit').value;
+    let precioLpsQqOro = 0;
+
+    if (precioUnit === 'lps_qq_oro') {
+      precioLpsQqOro = precioVal;
+    } else if (precioUnit === 'usd_qq_oro') {
+      precioLpsQqOro = precioVal * tc;
+    } else if (precioUnit === 'lps_qq_perg') {
+      precioLpsQqOro = precioVal * ratioPergAOro;
+    } else if (precioUnit === 'lps_lb') {
+      precioLpsQqOro = precioVal * 100;
+    } else if (precioUnit === 'usd_kg') {
+      precioLpsQqOro = precioVal * 45.3592 * tc;
+    }
+    document.getElementById('convPrecioResumen').innerText =
+      `Estándar IHCAFE: L. ${fmt(precioLpsQqOro, 0)} / qq Oro ($${fmt(precioLpsQqOro / tc, 2)} USD/qq Oro)`;
+
+    // 4. Desglose de Costos
+    const costoSelect = document.getElementById('costoUnit');
+    const costoUnit = costoSelect.value;
+    const costoUnitTexto = costoSelect.options[costoSelect.selectedIndex].text;
+    document.getElementById('notaUnidadCosto').innerText =
+      `💡 Nota: Ingrese cada rubro de costo expresado en la misma unidad elegida arriba (${costoUnitTexto}). El sistema los sumará automáticamente.`;
+
+    const cCorte = parseFloat(document.getElementById('costoCorte').value) || 0;
+    const cHumedo = parseFloat(document.getElementById('costoHumedo').value) || 0;
+    const cSecado = parseFloat(document.getElementById('costoSecado').value) || 0;
+    const cTrilla = parseFloat(document.getElementById('costoTrilla').value) || 0;
+    const costoVal = cCorte + cHumedo + cSecado + cTrilla;
+
+    if (costoVal > 0) {
+      const p1 = ((cCorte / costoVal) * 100).toFixed(0);
+      const p2 = ((cHumedo / costoVal) * 100).toFixed(0);
+      const p3 = ((cSecado / costoVal) * 100).toFixed(0);
+      const p4 = ((cTrilla / costoVal) * 100).toFixed(0);
+      document.getElementById('resumenEstructuraCostos').innerText =
+        `Suma Directa: ${fmt(costoVal, 2)} (${costoUnitTexto}) | Corte ${p1}% • Húmedo ${p2}% • Secado ${p3}% • Trilla ${p4}%`;
+    } else {
+      document.getElementById('resumenEstructuraCostos').innerText = `Suma Directa: 0.00`;
+    }
+
+    let costoLpsQqOro = 0;
+    if (costoUnit === 'lps_qq_oro') {
+      costoLpsQqOro = costoVal;
+    } else if (costoUnit === 'usd_qq_oro') {
+      costoLpsQqOro = costoVal * tc;
+    } else if (costoUnit === 'lps_qq_perg') {
+      costoLpsQqOro = costoVal * ratioPergAOro;
+    } else if (costoUnit === 'lps_lata') {
+      costoLpsQqOro = costoVal * latasPorQq * ratioPergAOro;
+    } else if (costoUnit === 'lps_lb') {
+      costoLpsQqOro = costoVal * 100;
+    }
+    document.getElementById('convCostoResumen').innerText =
+      `Estándar IHCAFE: L. ${fmt(costoLpsQqOro, 0)} / qq Oro ($${fmt(costoLpsQqOro / tc, 2)} USD/qq Oro)`;
+
+    // Otros parámetros
+    const pctMaduro = parseFloat(document.getElementById('pctMaduro').value) || 0;
+    const humedad = parseFloat(document.getElementById('humedadFinal').value) || 0;
+    const diasSecado = parseFloat(document.getElementById('diasSecado').value) || 0;
+    const mermaTueste = parseFloat(document.getElementById('mermaTueste').value) || 0;
+    const pesoBolsaLb = parseFloat(document.getElementById('pesoBolsaLb').value) || 1;
+    const bolsaGramos = pesoBolsaLb * 453.592;
+    if (etTueste) {
+      document.getElementById('convBolsa').innerText = `Equivale a: ${fmt(bolsaGramos, 1)} gramos (${fmt(bolsaGramos / 1000, 2)} kg)`;
+    }
+
+    const tieneEudr = document.getElementById('tieneEudr').value;
+    const tieneSca = document.getElementById('tieneSca').value;
+    const tieneAgua = document.getElementById('tieneAgua').value;
+
+    // Alertas y Fugas
+    let fugaLps = 0;
+    const alertas = [];
+    const plan = [];
+
+    let stCosecha = 'ok';
+    if (etCosecha) {
+      if (pctMaduro < 90) {
+        stCosecha = 'err';
+        const perdidaCalidad = volQqOro * precioLpsQqOro * 0.08;
+        fugaLps += perdidaCalidad;
+        alertas.push({
+          tipo: 'err',
+          titulo: `Fuga en Cosecha (${pctMaduro}% madurez) [KPI IHCAFE]:`,
+          texto: `Cortar más de 10% de grano verde/pintón reduce el peso y castiga el perfil en taza. Pérdida estimada: L. ${fmt(perdidaCalidad, 0)} ($${fmt(perdidaCalidad / tc, 0)} USD/año).`
+        });
+        plan.push({
+          prio: '1. Urgente',
+          fuga: `Bajo % de cereza madura (${pctMaduro}%)`,
+          accion: 'Implementar pago diferenciado por lata 100% madura y revisión visual en recibo.',
+          kpi: '★ % Cereza Madura (>95%)'
+        });
+      } else if (pctMaduro < 95) {
+        stCosecha = 'warn';
+        alertas.push({
+          tipo: 'warn',
+          titulo: `Alerta en Cosecha (${pctMaduro}% madurez) [KPI IHCAFE]:`,
+          texto: `Cerca del estándar de especialidad (>95%). Mejorar la selectividad elevará el puntaje SCA.`
+        });
+      } else {
+        alertas.push({
+          tipo: 'ok',
+          titulo: `Cosecha Óptima (${pctMaduro}% madurez) [KPI IHCAFE]:`,
+          texto: `Excelente selección en campo (18–24 °Brix potencial).`
+        });
+      }
+    }
+
+    let stSecado = 'ok';
+    if (etSecado) {
+      if (humedad < 10.2) {
+        stSecado = 'err';
+        const pctSobreSecado = (11.0 - humedad) / 100;
+        const perdidaPesoLps = volQqOro * precioLpsQqOro * pctSobreSecado;
+        fugaLps += perdidaPesoLps;
+        alertas.push({
+          tipo: 'err',
+          titulo: `Fuga por Sobre-secado (${humedad}% humedad) [KPI IHCAFE]:`,
+          texto: `Al secar debajo del 10.2% estás regalando peso vendible y quebrando el grano. Pérdida directa: L. ${fmt(perdidaPesoLps, 0)} ($${fmt(perdidaPesoLps / tc, 0)} USD/año).`
+        });
+        plan.push({
+          prio: '1. Urgente',
+          fuga: `Sobre-secado (${humedad}% vs 11.0% ideal)`,
+          accion: 'Detener secado exactamente al 11.0% usando higrómetro digital calibrado cada 6 horas.',
+          kpi: '★ Humedad Final (10.5 - 11.5%)'
+        });
+      } else if (humedad > 11.8) {
+        stSecado = 'err';
+        alertas.push({
+          tipo: 'err',
+          titulo: `Riesgo Crítico de Hongos y Rechazo (${humedad}% humedad) [KPI IHCAFE]:`,
+          texto: `Humedad superior a 11.8% dispara actividad de agua (>0.60 aw) y Ocratoxina A. Riesgo de rechazo total del lote.`
+        });
+        plan.push({
+          prio: '1. Urgente',
+          fuga: `Humedad alta (${humedad}%) con riesgo de hongos`,
+          accion: 'Re-secar lotes antes de ensacar y almacenar en bolsas herméticas (GrainPro) sobre tarimas.',
+          kpi: '★ Humedad (<11.5%) y aw (<0.60)'
+        });
+      } else {
+        alertas.push({
+          tipo: 'ok',
+          titulo: `Humedad de Secado Óptima (${humedad}%) [KPI IHCAFE]:`,
+          texto: `Rango ideal (10.5% - 11.5%) exigido por IHCAFE y compradores internacionales.`
+        });
+      }
+
+      const maxDias = tipoProceso === 'natural' ? 22 : (tipoProceso === 'honey' ? 16 : 14);
+      if (diasSecado > maxDias) {
+        if (stSecado === 'ok') stSecado = 'warn';
+        alertas.push({
+          tipo: 'warn',
+          titulo: `Cuello de Botella en Velocidad de Secado (${diasSecado} días para proceso ${tipoProceso}):`,
+          texto: `El secado lento estanca la capacidad del beneficio y provoca fermentaciones fenólicas o reposo desigual.`
+        });
+      }
+    }
+
+    let stTrilla = 'ok';
+    if (etTrilla) {
+      if (factorTrillaLb > 123) {
+        stTrilla = 'err';
+        const excesoLb = factorTrillaLb - 120;
+        const perdidaTrillaLps = (volQqOro * (excesoLb / 120)) * precioLpsQqOro;
+        fugaLps += perdidaTrillaLps;
+        alertas.push({
+          tipo: 'err',
+          titulo: `Fuga en Factor de Rendimiento (${fmt(ratioPergAOro, 2)} qq Perg / 1 qq Oro) [KPI IHCAFE]:`,
+          texto: `Necesitas ${fmt(excesoLb, 1)} lb extra de pergamino por quintal oro (por granos vanos, broca o mala calibración de trilla). Pérdida: L. ${fmt(perdidaTrillaLps, 0)} ($${fmt(perdidaTrillaLps / tc, 0)} USD/año).`
+        });
+        plan.push({
+          prio: '2. Alta',
+          fuga: `Bajo rendimiento en trilla (${fmt(factorTrillaLb, 1)} lb/qq)`,
+          accion: 'Separar flotes/vanos antes de despulpar y calibrar zarandas y aire de la trilladora.',
+          kpi: '★ Factor Rendimiento (1.18-1.22 qq)'
+        });
+      } else {
+        alertas.push({
+          tipo: 'ok',
+          titulo: `Buen Rendimiento de Trilla (${fmt(ratioPergAOro, 2)} qq Perg / 1 qq Oro) [KPI IHCAFE]:`,
+          texto: `Conversión eficiente de café pergamino a oro exportable.`
+        });
+      }
+    }
+
+    let stTueste = 'ok';
+    if (etTueste) {
+      if (mermaTueste > 18.5) {
+        stTueste = 'err';
+        const excesoMerma = (mermaTueste - 16.5) / 100;
+        const perdidaTuesteLps = volQqOro * precioLpsQqOro * 1.4 * excesoMerma;
+        fugaLps += perdidaTuesteLps;
+        alertas.push({
+          tipo: 'err',
+          titulo: `Fuga por Merma Excesiva en Tueste (${mermaTueste}%):`,
+          texto: `Estás quemando peso vendible (el estándar es 14%–18%). Pérdida estimada: L. ${fmt(perdidaTuesteLps, 0)} ($${fmt(perdidaTuesteLps / tc, 0)} USD/año).`
+        });
+        plan.push({
+          prio: '2. Alta',
+          fuga: `Alta merma de tueste (${mermaTueste}%)`,
+          accion: 'Registrar curva de tiempo/temperatura por bachada y controlar porcentaje de desarrollo (15-20%).',
+          kpi: 'Merma Tueste (14-18%) y Color'
+        });
+      } else {
+        alertas.push({
+          tipo: 'ok',
+          titulo: `Merma de Tueste Controlada (${mermaTueste}%):`,
+          texto: `Dentro del rango eficiente de transformación térmica.`
+        });
+      }
+    }
+
+    if (tieneEudr !== 'si') {
+      alertas.push({
+        tipo: 'err',
+        titulo: `Fuga de Acceso a Mercado Europeo (EUDR: ${tieneEudr === 'parcial' ? 'Parcial' : 'No preparado'}) [KPI IHCAFE]:`,
+        texto: `Sin polígonos GPS vinculados a cada lote separado, el café queda bloqueado para exportación directa a Europa.`
+      });
+      plan.push({
+        prio: '1. Urgente',
+        fuga: 'Trazabilidad EUDR incompleta',
+        accion: 'Levantar polígonos GPS de las parcelas con app gratuita y asignar código único por lote desde el corte.',
+        kpi: '★ % Lotes Georreferenciados (100%)'
+      });
+    }
+
+    if (tieneSca === 'no') {
+      alertas.push({
+        tipo: 'warn',
+        titulo: `Fuga de Precio por Puntaje SCA No Certificado [KPI IHCAFE]:`,
+        texto: `Los compradores internacionales castigan precios cuando el puntaje es autorreportado. Validar en laboratorio IHCAFE/COMICAOL permite negociar diferenciales.`
+      });
+      plan.push({
+        prio: '3. Media',
+        fuga: 'Sin respaldo oficial de calidad en taza',
+        accion: 'Enviar muestra de 350 g por lote a laboratorio tercero (IHCAFE/COMICAOL) para ficha oficial.',
+        kpi: '★ Puntaje SCA Verificado (≥84 pts)'
+      });
+    }
+
+    if (tieneAgua === 'no' && (etCosecha || etSecado) && tipoProceso !== 'natural') {
+      alertas.push({
+        tipo: 'warn',
+        titulo: `Riesgo Ambiental (Sin Medición de Agua / Aguas Mieles) [KPI IHCAFE]:`,
+        texto: `Impide acceder a sellos Rainforest Alliance, Orgánico o Denominación de Origen.`
+      });
+    }
+
+    ultimoCalculoGlobal = { volQqOro, fugaLps };
+
+    // Actualizar Resumen Superior
+    const utilidadQqLps = precioLpsQqOro - costoLpsQqOro;
+    const margenPct = precioLpsQqOro > 0 ? (utilidadQqLps / precioLpsQqOro) * 100 : 0;
+
+    document.getElementById('resVolLocal').innerText = `${fmt(volQqOro, 1)} qq Oro`;
+    document.getElementById('resVolInt').innerText = `${fmt(volQqPerg, 1)} qq Perg. | ${fmt(volKgOro, 0)} kg | ${fmt(sacos69Kg, 1)} sacos`;
+    document.getElementById('resMargen').innerText = `${fmt(margenPct, 1)}%`;
+    document.getElementById('resUtilidad').innerText = `L. ${fmt(utilidadQqLps, 0)}/qq Oro ($${fmt(utilidadQqLps / tc)} USD/qq)`;
+    document.getElementById('resFugaAnual').innerText = `L. ${fmt(fugaLps, 0)}`;
+    document.getElementById('resFugaUsd').innerText = `$${fmt(fugaLps / tc, 0)} USD / año recuperables`;
+
+    // Renderizar Diagrama de Flujo Dinámico
+    const nodos = [];
+    if (etCosecha) {
+      nodos.push({ sym: '○ OPERACIÓN', title: 'Cosecha y Recibo', metric: `${pctMaduro}% maduro ★`, st: stCosecha });
+      const descBenef = tipoProceso === 'natural' ? 'Limpieza en Seco' : (tipoProceso === 'honey' ? 'Despulpado sin Lavar' : 'Despulpado y Lavado ★');
+      nodos.push({ sym: '○ OPERACIÓN', title: `Beneficio (${tipoProceso.toUpperCase()})`, metric: descBenef, st: (tieneAgua === 'si' || tipoProceso === 'natural') ? 'ok' : 'warn' });
+    }
+    if (etSecado) {
+      nodos.push({ sym: '○ / □ SECADO', title: 'Secado Controlado', metric: `${humedad}% hum. (${diasSecado}d) ★`, st: stSecado });
+    }
+    nodos.push({ sym: '▽ ALMACÉN', title: 'Reposo Pergamino', metric: tieneEudr === 'si' ? 'Lote con GPS ★' : 'Sin GPS completo ★', st: tieneEudr === 'si' ? 'ok' : 'err' });
+    if (etTrilla) {
+      nodos.push({ sym: '○ / □ TRILLA', title: 'Beneficio Seco', metric: `${fmt(ratioPergAOro, 2)} qq perg/oro ★`, st: stTrilla });
+    }
+    if (etTueste) {
+      nodos.push({ sym: '○ TUESTE', title: 'Tostado y Molienda', metric: `Merma: ${mermaTueste}%`, st: stTueste });
+      nodos.push({ sym: '□ EMPAQUE', title: 'Empaque Final', metric: `${pesoBolsaLb} lb (${fmt(bolsaGramos, 0)} g)`, st: 'ok' });
+    } else {
+      nodos.push({ sym: '□ DESPACHO', title: 'Ensacado Export.', metric: `${fmt(volQqOro, 1)} qq Oro (${fmt(sacos69Kg, 1)} sacos)`, st: tieneSca === 'si' ? 'ok' : 'warn' });
+    }
+
+    document.getElementById('diagramaFlujo').innerHTML = nodos.map((n, idx) => `
+      <div class="flow-node status-${n.st}">
+        <div class="node-symbol">${n.sym}</div>
+        <div class="node-title">${n.title}</div>
+        <div class="node-metric">${n.metric}</div>
+      </div>
+      ${idx < nodos.length - 1 ? '<div class="flow-arrow">➔</div>' : ''}
+    `).join('');
+
+    document.getElementById('listaAlertas').innerHTML = alertas.map(a => `
+      <div class="alert-item alert-${a.tipo}">
+        <strong>${a.titulo}</strong> ${a.texto}
+      </div>
+    `).join('');
+
+    if (plan.length === 0) {
+      document.getElementById('tablaPlan').innerHTML = `<tr><td colspan="4" style="text-align:center; color:#065F46; font-weight:600;">¡Proceso altamente optimizado! Mantener bitácoras de control y auditoría periódica.</td></tr>`;
+    } else {
+      document.getElementById('tablaPlan').innerHTML = plan.slice(0, 4).map(p => `
+        <tr>
+          <td><strong>${p.prio}</strong></td>
+          <td>${p.fuga}</td>
+          <td>${p.accion}</td>
+          <td><span class="conv-badge">${p.kpi}</span></td>
+        </tr>
+      `).join('');
+    }
+  }
+
+  // Funciones de Bitácora Local (localStorage)
+  function obtenerBitacora() {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function mostrarToast(msg) {
+    const t = document.getElementById('toastMsg');
+    t.innerText = msg;
+    t.style.display = 'block';
+    setTimeout(() => { t.style.display = 'none'; }, 3000);
+  }
+
+  function guardarEnBitacora() {
+    const registro = {
+      id: Date.now(),
+      fecha: new Date().toLocaleDateString('es-HN'),
+      nombre: document.getElementById('empNombre').value || 'Sin Nombre',
+      proceso: document.getElementById('tipoProceso').value.toUpperCase(),
+      volQqOro: ultimoCalculoGlobal.volQqOro,
+      fugaLps: ultimoCalculoGlobal.fugaLps,
+      estado: {
+        selectEmpresa: document.getElementById('selectEmpresa').value,
+        empNombre: document.getElementById('empNombre').value,
+        tasaCambio: document.getElementById('tasaCambio').value,
+        tipoProceso: document.getElementById('tipoProceso').value,
+        factorCerezaPerg: document.getElementById('factorCerezaPerg').value,
+        etCosecha: document.getElementById('etCosecha').checked,
+        etSecado: document.getElementById('etSecado').checked,
+        etTrilla: document.getElementById('etTrilla').checked,
+        etTueste: document.getElementById('etTueste').checked,
+        volInput: document.getElementById('volInput').value,
+        volUnit: document.getElementById('volUnit').value,
+        precioInput: document.getElementById('precioInput').value,
+        precioUnit: document.getElementById('precioUnit').value,
+        costoUnit: document.getElementById('costoUnit').value,
+        costoCorte: document.getElementById('costoCorte').value,
+        costoHumedo: document.getElementById('costoHumedo').value,
+        costoSecado: document.getElementById('costoSecado').value,
+        costoTrilla: document.getElementById('costoTrilla').value,
+        trillaInput: document.getElementById('trillaInput').value,
+        trillaUnit: document.getElementById('trillaUnit').value,
+        pctMaduro: document.getElementById('pctMaduro').value,
+        humedadFinal: document.getElementById('humedadFinal').value,
+        diasSecado: document.getElementById('diasSecado').value,
+        tieneSca: document.getElementById('tieneSca').value,
+        mermaTueste: document.getElementById('mermaTueste').value,
+        pesoBolsaLb: document.getElementById('pesoBolsaLb').value,
+        tieneEudr: document.getElementById('tieneEudr').value,
+        tieneAgua: document.getElementById('tieneAgua').value
+      }
+    };
+
+    try {
+      const lista = obtenerBitacora();
+      lista.unshift(registro);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(lista));
+      renderizarBitacora();
+      mostrarToast('✅ Lote guardado en la bitácora local del dispositivo.');
+    } catch (e) {
+      mostrarToast('⚠️ No se pudo acceder al almacenamiento en esta vista previa; funcionará al abrirlo como archivo HTML.');
+    }
+  }
+
+  function cargarDesdeBitacora(id) {
+    const lista = obtenerBitacora();
+    const item = lista.find(x => x.id === id);
+    if (!item || !item.estado) return;
+    const s = item.estado;
+
+    document.getElementById('selectEmpresa').value = s.selectEmpresa || 'custom';
+    document.getElementById('empNombre').value = s.empNombre;
+    document.getElementById('tasaCambio').value = s.tasaCambio;
+    document.getElementById('tipoProceso').value = s.tipoProceso;
+    document.getElementById('factorCerezaPerg').value = s.factorCerezaPerg;
+    document.getElementById('etCosecha').checked = s.etCosecha;
+    document.getElementById('etSecado').checked = s.etSecado;
+    document.getElementById('etTrilla').checked = s.etTrilla;
+    document.getElementById('etTueste').checked = s.etTueste;
+    document.getElementById('volInput').value = s.volInput;
+    document.getElementById('volUnit').value = s.volUnit;
+    document.getElementById('precioInput').value = s.precioInput;
+    document.getElementById('precioUnit').value = s.precioUnit;
+    document.getElementById('costoUnit').value = s.costoUnit;
+    document.getElementById('costoCorte').value = s.costoCorte;
+    document.getElementById('costoHumedo').value = s.costoHumedo;
+    document.getElementById('costoSecado').value = s.costoSecado;
+    document.getElementById('costoTrilla').value = s.costoTrilla;
+    document.getElementById('trillaInput').value = s.trillaInput;
+    document.getElementById('trillaUnit').value = s.trillaUnit;
+    document.getElementById('pctMaduro').value = s.pctMaduro;
+    document.getElementById('humedadFinal').value = s.humedadFinal;
+    document.getElementById('diasSecado').value = s.diasSecado;
+    document.getElementById('tieneSca').value = s.tieneSca;
+    document.getElementById('mermaTueste').value = s.mermaTueste;
+    document.getElementById('pesoBolsaLb').value = s.pesoBolsaLb;
+    document.getElementById('tieneEudr').value = s.tieneEudr;
+    document.getElementById('tieneAgua').value = s.tieneAgua;
+
+    actualizarTodo();
+    mostrarToast(`📂 Lote "${item.nombre}" cargado.`);
+  }
+
+  function eliminarDeBitacora(id) {
+    try {
+      const lista = obtenerBitacora().filter(x => x.id !== id);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(lista));
+      renderizarBitacora();
+    } catch (e) {}
+  }
+
+  function limpiarBitacora() {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      renderizarBitacora();
+      mostrarToast('🗑️ Bitácora limpiada.');
+    } catch (e) {}
+  }
+
+  function renderizarBitacora() {
+    const tbody = document.getElementById('tablaBitacora');
+    const lista = obtenerBitacora();
+    if (lista.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--muted);">Aún no hay lotes guardados. Presione "Guardar Lote en Bitácora" para registrar su primer diagnóstico.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = lista.map(item => `
+      <tr>
+        <td>${item.fecha}</td>
+        <td><strong>${item.nombre}</strong></td>
+        <td><span class="ihcafe-badge">${item.proceso}</span></td>
+        <td>${fmt(item.volQqOro, 1)} qq Oro</td>
+        <td style="color:#DC2626; font-weight:700;">L. ${fmt(item.fugaLps, 0)}</td>
+        <td>
+          <button class="btn-sm btn-save" onclick="cargarDesdeBitacora(${item.id})">Cargar</button>
+          <button class="btn-sm btn-danger" onclick="eliminarDeBitacora(${item.id})">✕</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  cargarDatosEmpresa();
+  renderizarBitacora();
+</script>
+</body>
+</html>
